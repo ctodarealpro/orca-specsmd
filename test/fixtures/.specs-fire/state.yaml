@@ -1,0 +1,47 @@
+project:
+  name: demo
+  description: Projeto de teste
+  fire_version: 0.1.74
+workspace:
+  type: brownfield
+  parts:
+    - api
+intents:
+  - id: demo
+    title: Intent de demonstração
+    status: in_progress
+    work_items:
+      - id: W-DEMO-01
+        title: Primeiro item
+        status: completed
+        complexity: low
+        mode: autopilot
+      - id: W-DEMO-02
+        title: Segundo item
+        status: in_progress
+        complexity: medium
+        mode: validate
+        depends_on:
+          - W-DEMO-01
+      - id: W-DEMO-03
+        title: Terceiro item
+        status: done
+        mode: confirm
+  - id: orfa
+    title: orfa
+    status: pending
+    work_items: []
+runs:
+  active:
+    - id: run-demo-001
+      scope: single
+      work_items:
+        - id: W-DEMO-02
+          intent: demo
+          mode: validate
+          status: in_progress
+          current_phase: plan
+          checkpoint_state: awaiting_approval
+      current_item: W-DEMO-02
+      started: 2026-10-21T01:43:53.161Z
+  completed: []

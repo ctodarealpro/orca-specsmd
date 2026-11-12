@@ -1,0 +1,105 @@
+{
+  "$schema": "https://raw.githubusercontent.com/stablyai/orca/main/docs/schemas/plugins/orca-plugin.v2.schema.json",
+  "manifestVersion": 2,
+  "execution": "trusted-worker",
+  "id": "specsmd-fire",
+  "name": "FIRE board for specs.md",
+  "version": "0.2.0",
+  "description": "Painel não oficial para projetos specs.md no Orca: runs ativas e concluídas, intents e work items com progresso e visão geral do projeto FIRE (.specs-fire), como a extensão do VS Code.",
+  "engines": {
+    "orca": ">=1.4.248"
+  },
+  "pluginApi": 1,
+  "main": "worker/main.mjs",
+  "contributes": {
+    "panels": [
+      {
+        "id": "fire",
+        "title": "specs.md",
+        "icon": "layers",
+        "entry": "panel/index.html",
+        "ui": "html"
+      }
+    ],
+    "commands": [
+      {
+        "id": "fire.refresh",
+        "title": "specs.md: recarregar o projeto FIRE"
+      }
+    ],
+    "statusBarItems": [
+      {
+        "id": "fire",
+        "text": "FIRE",
+        "icon": "layers",
+        "tooltip": "FIRE (specs.md)",
+        "command": "fire.refresh"
+      }
+    ],
+    "events": [
+      {
+        "on": "workspace.changed"
+      }
+    ],
+    "settings": [
+      {
+        "key": "specsRoot",
+        "title": "Pasta do projeto",
+        "description": "Pasta que contém .specs-fire (ou uma pasta abaixo dela). Vazio: procura a partir do workspace em foco no Orca.",
+        "type": "string",
+        "default": "",
+        "placeholder": "\\\\wsl.localhost\\Ubuntu\\home\\voce\\repos\\meu-projeto"
+      },
+      {
+        "key": "remoteEnvironment",
+        "title": "Servidor Orca (opcional)",
+        "description": "Só para workspaces de outro host (um servidor Orca pareado): nome ou id do servidor salvo em `orca environment list`. Vazio, o plugin tenta o host do workspace e os servidores salvos. Workspaces deste computador sempre leem o disco daqui.",
+        "type": "string",
+        "default": "",
+        "placeholder": "meu-servidor"
+      },
+      {
+        "key": "whenBoth",
+        "title": "Quando o workspace existe nos dois",
+        "description": "O Orca não diz ao plugin de qual host é o workspace em foco. Quando o mesmo nome e branch existem neste computador e no servidor pareado (por exemplo develop), ler daqui ou do servidor. O painel também troca isso em \"Ler de\".",
+        "type": "string",
+        "enum": [
+          "local",
+          "server"
+        ],
+        "enumLabels": [
+          "Este computador",
+          "Servidor"
+        ],
+        "default": "local"
+      },
+      {
+        "key": "pollSeconds",
+        "title": "Intervalo de leitura (s)",
+        "description": "De quanto em quanto tempo o worker confere se o state.yaml ou os arquivos das runs mudaram.",
+        "type": "integer",
+        "default": 5,
+        "minimum": 2,
+        "maximum": 120
+      },
+      {
+        "key": "orcaCliPath",
+        "title": "CLI do Orca (avançado)",
+        "description": "Só no modo servidor, e só se o plugin não achar o CLI sozinho: caminho do resources/app.asar.unpacked/out/cli/index.js da instalação do Orca.",
+        "type": "string",
+        "default": ""
+      }
+    ]
+  },
+  "capabilities": [
+    {
+      "kind": "workspace:read"
+    },
+    {
+      "kind": "workspace:write"
+    },
+    {
+      "kind": "settings:own"
+    }
+  ]
+}

@@ -1,0 +1,387 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>specs.md</title>
+<!-- Frame panel (ui: "html"). Script and styles stay inline: browser clients of `orca serve` load
+     the frame with an opaque origin and no access to the plugin folder. -->
+<style>
+  :root {
+    --bg: var(--orca-background, #ffffff);
+    --fg: var(--orca-foreground, #1f2328);
+    --primary: var(--orca-primary, #3b82f6);
+    --muted: color-mix(in srgb, var(--fg) 60%, transparent);
+    --line: color-mix(in srgb, var(--fg) 14%, transparent);
+    --soft: color-mix(in srgb, var(--fg) 5%, transparent);
+    --done: #2da44e; --active: #3b82f6; --blocked: #d1242f; --pending: #8c959f; --deferred: #bf8700; --other: #8c959f;
+  }
+  html.dark { --done: #3fb950; --active: #58a6ff; --blocked: #f85149; --deferred: #d29922; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--fg); font: 13px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  button, input, select { font: inherit; color: inherit; }
+  header { position: sticky; top: 0; z-index: 2; background: var(--bg); padding: 8px 10px 0; border-bottom: 1px solid var(--line); }
+  .top { display: flex; align-items: center; gap: 6px; }
+  .top h1 { flex: 1; margin: 0; font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .sub { color: var(--muted); font-size: 11px; margin: 2px 0 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .choice { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--muted); margin: -2px 0 6px; }
+  .choice .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
+  .choice .seg button { border: 0; background: none; padding: 2px 8px; cursor: pointer; color: var(--muted); }
+  .choice .seg button[aria-pressed="true"] { background: var(--primary); color: var(--bg); }
+  .tabs { display: flex; gap: 2px; }
+  .tab { border: 0; background: none; padding: 6px 10px; cursor: pointer; color: var(--muted); border-bottom: 2px solid transparent; }
+  .tab[aria-selected="true"] { color: var(--fg); border-bottom-color: var(--primary); }
+  main { padding: 10px; }
+  .btn { border: 1px solid var(--line); background: var(--soft); border-radius: 6px; padding: 3px 9px; cursor: pointer; }
+  .btn:hover { border-color: var(--primary); }
+  .icon { border: 0; background: none; cursor: pointer; padding: 2px 6px; border-radius: 6px; color: var(--muted); }
+  .icon:hover { background: var(--soft); color: var(--fg); }
+  .card { border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; margin-bottom: 10px; }
+  .card h3 { margin: 0 0 4px; font-size: 13px; }
+  .row { display: flex; align-items: center; gap: 6px; padding: 3px 0; min-width: 0; }
+  .grow { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .muted { color: var(--muted); }
+  .small { font-size: 11px; }
+  .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; flex: none; background: var(--other); }
+  .b-done { background: var(--done); } .b-active { background: var(--active); } .b-blocked { background: var(--blocked); }
+  .b-pending { background: var(--pending); } .b-deferred { background: var(--deferred); }
+  .badge { font-size: 10.5px; padding: 0 6px; border-radius: 10px; border: 1px solid var(--line); color: var(--muted); white-space: nowrap; }
+  .warn { border: 1px solid color-mix(in srgb, var(--deferred) 50%, transparent); background: color-mix(in srgb, var(--deferred) 12%, transparent); border-radius: 6px; padding: 6px 8px; margin: 6px 0; }
+  .err { border-color: color-mix(in srgb, var(--blocked) 50%, transparent); background: color-mix(in srgb, var(--blocked) 10%, transparent); }
+  .bar { height: 6px; border-radius: 3px; background: var(--soft); overflow: hidden; }
+  .bar > span { display: block; height: 100%; background: var(--done); }
+  .mini { width: 46px; flex: none; }
+  details { border-bottom: 1px solid var(--line); }
+  details > summary { list-style: none; cursor: pointer; padding: 5px 0; }
+  details > summary::-webkit-details-marker { display: none; }
+  details > summary .row::before { content: "▸"; color: var(--muted); width: 10px; flex: none; }
+  details[open] > summary .row::before { content: "▾"; }
+  .kids { padding: 0 0 6px 16px; }
+  .link { cursor: pointer; border-radius: 4px; }
+  .link:hover { background: var(--soft); }
+  .link:hover .grow { color: var(--primary); }
+  .tools { display: flex; gap: 6px; margin-bottom: 8px; }
+  .tools input { flex: 1; min-width: 0; }
+  .tools input, .tools select { border: 1px solid var(--line); background: var(--bg); border-radius: 6px; padding: 3px 6px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); gap: 6px; margin: 8px 0; }
+  .stat { border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; }
+  .stat b { display: block; font-size: 18px; }
+  dl { display: grid; grid-template-columns: max-content 1fr; gap: 3px 10px; margin: 6px 0; }
+  dt { color: var(--muted); } dd { margin: 0; overflow-wrap: anywhere; }
+  pre { white-space: pre-wrap; overflow-wrap: anywhere; font: 12px/1.5 ui-monospace, SFMono-Regular, Consolas, monospace; background: var(--soft); border-radius: 6px; padding: 8px; margin: 8px 0 0; }
+  .empty { text-align: center; color: var(--muted); padding: 30px 10px; }
+  .skeleton { height: 14px; border-radius: 4px; background: var(--soft); margin: 8px 0; }
+</style>
+</head>
+<body>
+<header>
+  <div class="top">
+    <h1 id="title">specs.md</h1>
+    <span id="age" class="muted small"></span>
+    <button class="icon" id="refresh" title="Recarregar" aria-label="Recarregar">⟳</button>
+  </div>
+  <div class="sub" id="source"></div>
+  <div class="choice" id="choice" hidden></div>
+  <div class="tabs" role="tablist">
+    <button class="tab" role="tab" data-tab="runs">Runs</button>
+    <button class="tab" role="tab" data-tab="intents">Intents</button>
+    <button class="tab" role="tab" data-tab="overview">Visão geral</button>
+  </div>
+</header>
+<main id="main"><div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div></main>
+<script>
+'use strict'
+const BUCKET_LABEL = { done: 'Concluídos', active: 'Em andamento', blocked: 'Bloqueados', pending: 'Pendentes', deferred: 'Adiados', other: 'Outros' }
+const BUCKETS = Object.keys(BUCKET_LABEL)
+
+// localStorage may be missing in browser clients (opaque origin): every access is guarded.
+const store = {
+  get(key, fallback) { try { return localStorage.getItem('fire.' + key) ?? fallback } catch { return fallback } },
+  set(key, value) { try { localStorage.setItem('fire.' + key, value) } catch {} }
+}
+
+const state = {
+  tab: store.get('tab', 'runs'),
+  filter: store.get('filter', 'open'),
+  query: '',
+  answer: null,
+  failure: null,
+  loading: false,
+  open: new Set(),
+  viewer: null // { path, name, text, truncated } | { path, loading } | { path, error }
+}
+
+// orca.plugin.request answers with the handler's output; unwrap a { output } envelope just in case.
+async function request(name, input) {
+  const result = await orca.plugin.request(name, input, { timeoutMs: 90000 })
+  return result && typeof result === 'object' && Object.keys(result).length === 1 && 'output' in result ? result.output : result
+}
+
+function h(tag, attrs, ...children) {
+  const el = document.createElement(tag)
+  for (const [key, value] of Object.entries(attrs || {})) {
+    if (value === null || value === undefined || value === false) continue
+    if (key.startsWith('on')) el.addEventListener(key.slice(2), value)
+    else if (key === 'class') el.className = value
+    else el.setAttribute(key, value === true ? '' : value)
+  }
+  for (const child of children.flat(Infinity)) {
+    if (child === null || child === undefined || child === false) continue
+    el.append(child instanceof Node ? child : document.createTextNode(String(child)))
+  }
+  return el
+}
+
+const dot = (bucket) => h('span', { class: 'dot b-' + bucket, title: BUCKET_LABEL[bucket] })
+const bar = (pct, cls) => h('div', { class: 'bar ' + (cls || '') }, h('span', { style: 'width:' + Math.max(0, Math.min(100, pct || 0)) + '%' }))
+
+function ago(ms) {
+  if (!ms) return ''
+  const s = Math.round((Date.now() - ms) / 1000)
+  if (s < 60) return 'agora'
+  if (s < 3600) return 'há ' + Math.round(s / 60) + ' min'
+  if (s < 86400) return 'há ' + Math.round(s / 3600) + ' h'
+  return 'há ' + Math.round(s / 86400) + ' d'
+}
+const date = (ms) => (ms ? new Date(ms).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : '—')
+
+function fileRow(file, label) {
+  return h('div', { class: 'row link', title: file.path, onclick: () => openViewer(file.path) },
+    h('span', { class: 'muted' }, '📄'), h('span', { class: 'grow' }, label || file.name))
+}
+
+async function load(force) {
+  state.loading = true
+  try {
+    state.answer = await request('specs.snapshot', { force: Boolean(force) })
+    state.failure = null
+  } catch (error) {
+    state.failure = error && error.message ? error.message : String(error)
+  } finally {
+    state.loading = false
+    render()
+  }
+}
+
+async function openViewer(path) {
+  state.viewer = { path, loading: true }
+  render()
+  try {
+    state.viewer = await request('specs.read', { path })
+  } catch (error) {
+    state.viewer = { path, error: error && error.message ? error.message : String(error) }
+  }
+  render()
+  window.scrollTo(0, 0)
+}
+
+async function openInEditor(path) {
+  try {
+    await request('specs.open', { path })
+  } catch (error) {
+    state.viewer = Object.assign({}, state.viewer, { editorError: (error && error.message) || String(error) })
+    render()
+  }
+}
+
+// ---------- tabs ----------
+
+function runsTab(snap) {
+  const out = []
+  if (!snap.runs.active.length) out.push(h('div', { class: 'empty' }, 'Nenhuma run ativa.'))
+  for (const run of snap.runs.active) {
+    const waiting = run.workItems.filter((wi) => wi.checkpoint === 'awaiting_approval')
+    out.push(h('div', { class: 'card' },
+      h('h3', {}, run.id),
+      h('div', { class: 'muted small' }, (run.scope ? 'escopo ' + run.scope + ' · ' : '') + 'iniciada ' + date(run.started)),
+      waiting.length ? h('div', { class: 'warn' }, '⏸ Aguardando aprovação: ', waiting.map((wi) => wi.id).join(', ')) : null,
+      run.workItems.map((wi) => h('div', { class: 'row' },
+        h('span', { class: 'dot b-' + (wi.id === run.currentItem ? 'active' : 'pending') }),
+        h('span', { class: 'grow' }, h('b', {}, wi.id), wi.intent ? h('span', { class: 'muted' }, ' · ' + wi.intent) : null),
+        wi.mode ? h('span', { class: 'badge' }, wi.mode) : null,
+        wi.phase ? h('span', { class: 'badge' }, wi.phase) : null)),
+      run.files.length ? h('div', { style: 'margin-top:6px' }, run.files.map((f) => fileRow(f))) : null))
+  }
+  const done = snap.runs.completed.slice(0, 30)
+  if (done.length) {
+    out.push(h('div', { class: 'muted small', style: 'margin:12px 0 4px' }, 'Concluídas (' + snap.runs.completed.length + ')'))
+    for (const run of done) out.push(details('run:' + run.id,
+      h('div', { class: 'row' }, h('span', { class: 'dot b-done' }), h('span', { class: 'grow' }, run.id), h('span', { class: 'muted small' }, date(run.completed))),
+      () => [
+        run.workItems.map((wi) => h('div', { class: 'row small' }, h('span', { class: 'grow' }, wi.id + (wi.intent ? ' · ' + wi.intent : '')), wi.mode ? h('span', { class: 'badge' }, wi.mode) : null)),
+        run.files.map((f) => fileRow(f))
+      ]))
+  }
+  return out
+}
+
+function details(key, summary, body) {
+  const el = h('details', { open: state.open.has(key) }, h('summary', {}, summary))
+  let filled = false
+  const fill = () => { if (!filled && el.open) { filled = true; el.append(h('div', { class: 'kids' }, body())) } }
+  el.addEventListener('toggle', () => { el.open ? state.open.add(key) : state.open.delete(key); fill() })
+  fill()
+  return el
+}
+
+function intentsTab(snap) {
+  const q = state.query.trim().toLowerCase()
+  const keep = (intent) => {
+    if (state.filter === 'open' && intent.bucket === 'done') return false
+    if (state.filter === 'active' && intent.bucket !== 'active') return false
+    if (state.filter === 'done' && intent.bucket !== 'done') return false
+    if (!q) return true
+    return (intent.id + ' ' + intent.title).toLowerCase().includes(q) ||
+      intent.workItems.some((wi) => (wi.id + ' ' + wi.title).toLowerCase().includes(q))
+  }
+  const search = h('input', { type: 'search', placeholder: 'Buscar intent ou work item', value: state.query,
+    oninput: (e) => { state.query = e.target.value; renderList() } })
+  const select = h('select', { onchange: (e) => { state.filter = e.target.value; store.set('filter', state.filter); renderList() } },
+    [['open', 'Abertos'], ['active', 'Em andamento'], ['done', 'Concluídos'], ['all', 'Todos']].map(([v, l]) => h('option', { value: v, selected: v === state.filter }, l)))
+  const list = h('div', {})
+  function renderList() {
+    const intents = snap.intents.filter(keep)
+    list.replaceChildren(...(intents.length ? intents.map(intentNode) : [h('div', { class: 'empty' }, 'Nenhum intent com esse filtro.')]))
+  }
+  renderList()
+  return [h('div', { class: 'tools' }, search, select), list]
+}
+
+function intentNode(intent) {
+  const done = intent.workItems.filter((wi) => wi.bucket === 'done').length
+  return details('i:' + intent.id,
+    h('div', { class: 'row', title: intent.status },
+      dot(intent.bucket),
+      h('span', { class: 'grow' }, h('b', {}, intent.id), intent.title !== intent.id ? h('span', { class: 'muted' }, ' · ' + intent.title) : null),
+      intent.workItems.length ? bar(intent.progress, 'mini') : null,
+      h('span', { class: 'muted small' }, done + '/' + intent.workItems.length)),
+    () => [
+      intent.files.map((f) => fileRow(f)),
+      intent.workItems.map((wi) => h('div', {
+        class: 'row' + (wi.file ? ' link' : ''), title: wi.status + (wi.dependsOn.length ? ' · depende de ' + wi.dependsOn.join(', ') : ''),
+        onclick: wi.file ? () => openViewer(wi.file) : null },
+        dot(wi.bucket),
+        h('span', { class: 'grow' }, h('b', {}, wi.id), ' ', h('span', { class: 'muted' }, wi.title)),
+        wi.complexity ? h('span', { class: 'badge' }, wi.complexity) : null,
+        wi.mode ? h('span', { class: 'badge' }, wi.mode) : null)),
+      intent.dir ? null : h('div', { class: 'warn small' }, 'Sem pasta em intents/.')
+    ])
+}
+
+function overviewTab(snap) {
+  const wi = snap.stats.workItems
+  const pct = wi.total ? Math.round((wi.done / wi.total) * 100) : 0
+  const stat = (label, value) => h('div', { class: 'stat' }, h('b', {}, value), h('span', { class: 'muted small' }, label))
+  return [
+    h('div', { class: 'row' }, h('span', { class: 'grow' }, 'Work items concluídos'), h('b', {}, wi.done + '/' + wi.total + ' · ' + pct + '%')),
+    bar(pct),
+    h('div', { class: 'grid' },
+      stat('Intents', snap.stats.intents.total),
+      stat('Work items', wi.total),
+      stat('Runs ativas', snap.stats.runs.active),
+      stat('Runs concluídas', snap.stats.runs.completed)),
+    h('div', { class: 'muted small' }, 'Work items por status'),
+    h('div', { class: 'row', style: 'flex-wrap:wrap' }, BUCKETS.filter((b) => wi[b]).map((b) => h('span', { class: 'badge' }, dot(b), ' ', BUCKET_LABEL[b] + ' ' + wi[b]))),
+    h('dl', {},
+      h('dt', {}, 'Projeto'), h('dd', {}, snap.project.name),
+      snap.project.description ? [h('dt', {}, 'Descrição'), h('dd', {}, snap.project.description)] : null,
+      h('dt', {}, 'FIRE'), h('dd', {}, snap.project.fireVersion || '—'),
+      h('dt', {}, 'Workspace'), h('dd', {}, (snap.project.workspaceType || '—') + (snap.project.parts.length ? ' · ' + snap.project.parts.join(', ') : '')),
+      h('dt', {}, 'Pasta'), h('dd', {}, snap.root),
+      h('dt', {}, 'state.yaml'), h('dd', {}, 'alterado ' + ago(snap.stateMtime))),
+    h('div', { class: 'row' },
+      h('button', { class: 'btn', onclick: () => openViewer(snap.statePath) }, 'Ver state.yaml'),
+      h('button', { class: 'btn', onclick: () => load(true) }, 'Recarregar')),
+    snap.warnings.length ? details('warnings',
+      h('div', { class: 'row' }, h('span', { class: 'dot b-deferred' }), h('span', { class: 'grow' }, 'Divergências (' + snap.warnings.length + ')')),
+      () => snap.warnings.map((w) => h('div', { class: 'small', style: 'padding:2px 0' }, w))) : null
+  ]
+}
+
+function viewer() {
+  const v = state.viewer
+  return [
+    h('div', { class: 'row' },
+      h('button', { class: 'btn', onclick: () => { state.viewer = null; render() } }, '← Voltar'),
+      h('span', { class: 'grow', title: v.path }, h('b', {}, v.name || v.path.split(/[\\/]/).pop())),
+      h('button', { class: 'btn', title: 'Só no app desktop do Orca', onclick: () => openInEditor(v.path) }, 'Abrir no editor')),
+    v.editorError ? h('div', { class: 'warn small' }, 'Não abriu no editor: ' + v.editorError + ' (no navegador, o Orca não abre arquivos no editor).') : null,
+    v.loading ? h('div', {}, h('div', { class: 'skeleton' }), h('div', { class: 'skeleton' })) : null,
+    v.error ? h('div', { class: 'warn err' }, v.error) : null,
+    v.truncated ? h('div', { class: 'warn small' }, 'Arquivo grande: mostrando os primeiros 512 KiB.') : null,
+    typeof v.text === 'string' ? h('pre', {}, v.text) : null
+  ]
+}
+
+// ---------- shell ----------
+
+// Shown only when the focused name and branch exist on this computer and on the paired server:
+// Orca does not tell plugins which host the focus is on, so the person picks.
+function renderChoice(choice) {
+  const el = document.getElementById('choice')
+  el.hidden = !choice
+  if (!choice) return el.replaceChildren()
+  const pick = async (where) => {
+    if (where === choice.current || state.loading) return
+    state.loading = true
+    render()
+    try {
+      state.answer = await request('specs.prefer', { where })
+      state.failure = null
+    } catch (error) {
+      state.failure = error && error.message ? error.message : String(error)
+    } finally {
+      state.loading = false
+      render()
+    }
+  }
+  const option = (where, label) =>
+    h('button', { 'aria-pressed': String(choice.current === where), onclick: () => pick(where) }, label)
+  el.replaceChildren(
+    h('span', { title: choice.name + (choice.branch ? ' (' + choice.branch + ')' : '') + ' existe aqui e no servidor' }, 'Ler de'),
+    h('span', { class: 'seg' }, option('local', 'Este computador'), option('server', 'Servidor'))
+  )
+}
+
+function render() {
+  const answer = state.answer
+  const snap = answer && answer.snapshot
+  document.getElementById('title').textContent = snap ? snap.project.name : 'specs.md'
+  document.getElementById('source').textContent = answer && answer.root ? answer.root + (answer.source ? ' · ' + answer.source : '') : ''
+  renderChoice(answer && answer.choice)
+  document.getElementById('age').textContent = state.loading ? 'lendo…' : snap ? ago(snap.readAt) : ''
+  for (const tab of document.querySelectorAll('.tab')) tab.setAttribute('aria-selected', String(tab.dataset.tab === state.tab))
+
+  const main = document.getElementById('main')
+  let content
+  if (state.viewer) content = viewer()
+  else if (state.failure) content = [h('div', { class: 'warn err' }, 'O worker do plugin não respondeu: ' + state.failure), h('button', { class: 'btn', onclick: () => load(true) }, 'Tentar de novo')]
+  else if (!answer) content = [h('div', { class: 'skeleton' }), h('div', { class: 'skeleton' }), h('div', { class: 'skeleton' })]
+  else if (!snap) content = [h('div', { class: 'empty' },
+    h('p', {}, h('b', {}, 'Projeto FIRE não encontrado')),
+    h('p', {}, answer.error || ''),
+    h('p', { class: 'small' }, 'Abra no Orca um workspace dentro do projeto, ou informe a pasta em Settings → Plugins → specs.md (FIRE) → Pasta do projeto.'),
+    h('button', { class: 'btn', onclick: () => load(true) }, 'Procurar de novo'))]
+  else content = state.tab === 'intents' ? intentsTab(snap) : state.tab === 'overview' ? overviewTab(snap) : runsTab(snap)
+
+  const y = window.scrollY
+  main.replaceChildren(...[content].flat(Infinity).filter(Boolean))
+  if (!state.viewer) window.scrollTo(0, y)
+}
+
+for (const tab of document.querySelectorAll('.tab')) {
+  tab.addEventListener('click', () => { state.tab = tab.dataset.tab; state.viewer = null; store.set('tab', state.tab); render() })
+}
+document.getElementById('refresh').addEventListener('click', () => load(true))
+
+if (window.orca && orca.plugin) {
+  orca.plugin.on('specs.changed', () => { if (!state.loading) load(false) })
+  setInterval(() => { if (state.answer && state.answer.snapshot) document.getElementById('age').textContent = ago(state.answer.snapshot.readAt) }, 30000)
+  load(false)
+} else {
+  state.failure = 'window.orca não existe: esta página só funciona dentro do Orca.'
+  render()
+}
+</script>
+</body>
+</html>
